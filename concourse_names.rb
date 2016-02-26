@@ -11,7 +11,7 @@ $session_name = {
 	"Spring" => "Spring" 
 }
 
-$concourse_department = {
+$concourse_department_name = {
 	"ANU College of Asia and the Pacific" => "CHL",
 	"ANU National Security College" => "Crawford",
 	"Asia-Pacific College of Diplomacy" => "Bell",
@@ -24,7 +24,9 @@ $concourse_department = {
 	"Policy and Governance Program" => "Crawford",
 	"Regulatory Institutions Network Program" => "RJD",
 	"Research School of Management" => "RSM",
+	"Resource Management in Asia Pacific" => "Crawford",
 	"School of Culture History and Language" => "CHL",
+	"School of Culture, History &amp; Language" => "CHL",
 	"Strategic and Defence Studies Centre" => "Bell"
 }
 
@@ -33,27 +35,34 @@ $school_template = {
 	"ANU National Security College" => "NSC_Template",
 	"Asia-Pacific College of Diplomacy" => "Bell_Template",
 	"Australian Centre on China in the World" => "CIW_Template",
+	"Bell School Template" => "Bell_Template",
 	"Coral Bell School of Asia Pacific Affairs" => "Bell_Template",
+	"CHL Template" => "CHL_Template",
 	"Crawford School of Public Policy" => "Crawford_Template",
+	"Crawford Template" => "Crawford_Template",
 	"Department of International Relations" => "Bell_Template",
 	"Department of Political and Social Change" => "Bell_Template",
 	"International and Development Economics Program" => "Crawford_Template",
+	"NSC Template" => "NSC_Template",
 	"Policy and Governance Program" => "Crawford_Template",
 	"Regulatory Institutions Network Program" => "RJD_Template",
 	"Research School of Management" => "RSM_Template",
+	"Resource Management in Asia Pacific" => "Crawford Template",
+	"RSM Template" => "RSM_Template",
 	"School of Culture History and Language" => "CHL_Template",
 	"Strategic and Defence Studies Centre" => "Bell_Template"
 }
 
+=begin
 class OutputWriter 
 
 	def open_files
 		time = Time.new
 		$timestamp = time.strftime("_%Y-%m-%d")
-		course_feed_filename = "output/PandC_course_feed"+$timestamp
-		description_feed_filename = "output/PandC_description_feed"+$timestamp
-		section_feed_filename = "output/PandC_section_feed"+$timestamp
-		learningOutcomes_feed_filename = "output/PandC_LO_feed"+$timestamp
+		course_feed_filename = "PandCoutput/PandC_course_feed"+$timestamp
+		description_feed_filename = "PandCoutput/PandC_description_feed"+$timestamp
+		section_feed_filename = "PandCoutput/PandC_section_feed"+$timestamp
+		learningOutcomes_feed_filename = "PandCoutput/PandC_LO_feed"+$timestamp
 		puts "I'm going to overwrite #{course_feed_filename or 'error!'}"
 		puts "...and #{description_feed_filename or 'error!'}"
 		puts "...and #{learningOutcomes_feed_filename or 'error!'}"
@@ -83,4 +92,5 @@ class OutputWriter
 	end
 end
 # 
+=end
 
