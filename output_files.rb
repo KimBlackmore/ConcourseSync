@@ -8,11 +8,14 @@ class OutputWriter
 		output_folder = "SyncOutput"+$timestamp
 		FileUtils::mkdir_p output_folder
 
+
 		course_feed_filename = output_folder+"/courses_from_PandC"
 		description_feed_filename = output_folder+"/descriptions_from_PandC"
 		section_feed_filename = output_folder+"/section_from_PandC"
 		learningOutcomes_feed_filename = output_folder+"/LOs_from_PandC"
 		#unused_courses_filename = output_folder+"/PandC_to_unused"
+		testoutput_filename = output_folder+"/testout"
+		unsunc_filename = output_folder+"/unsunc"
 
 		puts "I'm going to overwrite files in  #{output_folder}"
 		puts "If you don't want that, hit CTRL-C (^C)."
@@ -21,6 +24,13 @@ class OutputWriter
 		$stdin.gets
 
 		puts "OK here goes..."
+
+		$testoutputfile = open(testoutput_filename,'w')
+		$testoutputfile.truncate(0)
+
+		$unsunc_file = open(unsunc_filename,'w')
+		$unsunc_file.truncate(0)
+		$unsunc_file.write("These things don't match in P&C and Concourse - you need to fix one or the other. Or not.\n")
 
 		$course_feed_file = open(course_feed_filename,'w')
 		$course_feed_file.truncate(0)
