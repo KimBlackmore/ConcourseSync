@@ -53,44 +53,11 @@ $school_template = {
 	"Strategic and Defence Studies Centre" => "Bell_Template"
 }
 
-=begin
-class OutputWriter 
-
-	def open_files
-		time = Time.new
-		$timestamp = time.strftime("_%Y-%m-%d")
-		course_feed_filename = "PandCoutput/PandC_course_feed"+$timestamp
-		description_feed_filename = "PandCoutput/PandC_description_feed"+$timestamp
-		section_feed_filename = "PandCoutput/PandC_section_feed"+$timestamp
-		learningOutcomes_feed_filename = "PandCoutput/PandC_LO_feed"+$timestamp
-		puts "I'm going to overwrite #{course_feed_filename or 'error!'}"
-		puts "...and #{description_feed_filename or 'error!'}"
-		puts "...and #{learningOutcomes_feed_filename or 'error!'}"
-		puts "If you don't want that, hit CTRL-C (^C)."
-		puts "If you do want that, hit RETURN."
-
-		$stdin.gets
-
-		puts "OK here goes..."
-
-
-		$course_feed_file = open(course_feed_filename,'w')
-		$course_feed_file.truncate(0)
-		$course_feed_file.write("COURSE_IDENTIFIER|TITLE|CAMPUS_IDENTIFIER|DEPARTMENT_IDENTIFIER|START_DATE|END_DATE|CLONE_FROM_IDENTIFIER|TIMEZONE|PREFIX|NUMBER|INSTRUCTOR|SESSION|YEAR|CREDITS|DELIVERY_METHOD|IS_STRUCTURED|IS_TEMPLATE|HIDDEN_FROM_SEARCH\n")
-
-		$description_feed_file = open(description_feed_filename,'w')
-		$description_feed_file.truncate(0)
-		$description_feed_file.write("COURSE_IDENTIFIER|DESCRIPTION|REQUISITES|NOTES|COMMENTS|IS_LOCKED\n")
-
-		$section_feed_file = open(section_feed_filename,'w')
-		$section_feed_file.truncate(0)
-		$section_feed_file.write("COURSE_IDENTIFIER|SECTION_IDENTIFIER|SECTION_LABEL\n")
-
-		$learningOutcomes_feed_file = open(learningOutcomes_feed_filename,'w')
-		$learningOutcomes_feed_file.truncate(0)
-		$learningOutcomes_feed_file.write("COURSE_IDENTIFIER|OUTCOMES|NOTES|COMMENTS|IS_LOCKED\n")
-	end
-end
-# 
-=end
-
+$short_name = {
+	"Semester 1" => "Sem1",
+	"Semester 2" => "Sem2",
+	"Summer" => "Sum",
+	"Autumn" => "Aut",
+	"Winter" => "Win",
+	"Spring" => "Spr" 
+}
