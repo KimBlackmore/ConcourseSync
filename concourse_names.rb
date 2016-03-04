@@ -44,6 +44,7 @@ $school_template = {
 	"Department of Political and Social Change" => "Bell_Template",
 	"International and Development Economics Program" => "Crawford_Template",
 	"NSC Template" => "NSC_Template",
+	"MAAPD template" => "MAAPD_Template",
 	"Policy and Governance Program" => "Crawford_Template",
 	"Regulatory Institutions Network Program" => "RJD_Template",
 	"Research School of Management" => "RSM_Template",

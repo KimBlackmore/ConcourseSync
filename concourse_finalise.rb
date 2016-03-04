@@ -52,9 +52,9 @@ CSV.foreach(concourse_syllabus_report, :headers => true) do |x|
 		course.check_audit_status
 		if course.to_finalise >0
 			puts "Finalise #{course.concourse_ID}"
-			course.change_to_final
-			course.write_course_feed($course_feed_file)
-			course.write_section_feed($section_feed_file)
+			#course.change_to_final
+			course.write_course_feed($course_feed_file, "Final")
+			course.write_section_feed($section_feed_file, "Final"
 		end
 	end
 end

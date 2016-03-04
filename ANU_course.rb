@@ -7,19 +7,15 @@ class ANU_Course
 	attr_reader :out_of_sync, :title, :is_draft, :concourse_ID, :code, :concourse_title
 	attr_reader :is_draft, :to_finalise, :concourse_department
 
+	def initialize(name)
+		@concourse_ID = name
+	end
+
 	def get_Concourse_summary(info)
 		@concourse_title = info["Course Title"].to_s
 		#puts "title: " + @concourse_title
-		@concourse_ID = info["Course Identifier"].to_s.strip
-		#puts "ID: " + @concourse_ID
-		if @concourse_ID == ""
-			return
-		end
-		@code = @concourse_ID[0..7]
-		@prefix = @concourse_ID[0..3]
-		@number = @concourse_ID[4..7]
 		@concourse_from_template = $school_template[info["Linked To"]]
-		#puts "linked to: #{@concourse_from_template or ''}"
+		#puts "#{@concourse_ID} linked to: #{@concourse_from_template or 'error'}"
 		@concourse_session = info["Session"].to_s
 		#puts "session: " + @concourse_session
 		@concourse_year = info["Year"].to_s
@@ -37,19 +33,21 @@ class ANU_Course
 		#puts "delivery: #{@concourse_delivery or ' '}"
 		@concourse_instructor = info["Instructor"].to_s
 		#puts "instructor: #{ @concourse_instructor or ' '}"
-		@concourse_start = info["Start Date"]
-		#puts "start: " + @concourse_start
-		@concourse_end = info["End Date"]
-		#puts "end: " + @concourse_end
 		@concourse_last_modified = info["Syllabus Last Modified"]
 		#puts "last: " + @concourse_last_modified
 		@concourse_is_template = info["Template"]
 		#puts "template: #{ @concourse_is_template or ' '}"
 		if @concourse_is_template=="Yes" and @concourse_campus == "FINAL"
-			puts "Error:" + @concourse_ID + " is in FINAL campus but it is a template"
+			puts "Error: " + @concourse_ID + " is in FINAL campus but it is a template"
 		elsif @concourse_is_template != "Yes" and @concourse_campus != "FINAL"
-			puts "Error:" + @concourse_ID + " is not a template and its in the #{@concourse_campus} campus"
+			puts "Error: " + @concourse_ID + " is not a template and its in the #{@concourse_campus} campus"
 		end
+		if @concourse_is_template=="Yes" and !@concourse_from_template
+			puts "Error: #{@concourse_ID } says its a template but isn't linked to one above"
+		elsif @concourse_is_template != "Yes" and @concourse_from_template != nil
+			puts "Error: #{@concourse_ID } says its not a template but it is lined to #{@concourse_from_template}"			
+		end
+
 		@audit_status = info["Audit Status"]
 		#puts "audit : " + @audit_status
 		@audit_date = info["Audit Date"]
@@ -83,21 +81,21 @@ class ANU_Course
 		puts  "to finise? "+ @to_finalise.to_s
 	end
 
-	def change_to_final
-		@concourse_from_template = @concourse_ID
-		@concourse_ID = @final_ID
-		@concourse_campus = "FINAL"
+	#def change_to_final
+#		@concourse_from_template = @concourse_ID
+#		@concourse_ID = @final_ID
+#		@concourse_campus = "FINAL"
 		#set start and end dates
-		@concourse_start = "01/01/#{$sync_year}"
-		@concourse_end = "12/31/#{$sync_year}"  
-		@concourse_is_template = 0
-	end
+		#@concourse_start = "01/01/#{$sync_year}"
+		#@concourse_end = "12/31/#{$sync_year}"  
+#		@concourse_is_template = 0
+#	end
 
 	def open_PandC
 		#open the matching page in P&C
-		url = "http://programsandcourses.anu.edu.au/"+$sync_year+"/course/"+@code
+		url = "http://programsandcourses.anu.edu.au/"+$sync_year+"/course/"+@concourse_ID[0..7]
 		encoded_url = URI.encode(url)
-		@doc_PandC=Nokogiri::HTML(open(encoded_url))
+		@doc_PandC=Nokogiri::XML(open(encoded_url))
 		#puts "I'm in"
 		#puts @doc_PandC
 
@@ -109,7 +107,7 @@ class ANU_Course
 		end
 		if @title != @concourse_title
 			# update Concourse to ensure titles match
-			puts "#{@concourse_ID}: Syllabus feed will update title from #{@concourse_title} to #{@title}"
+			puts "#{@concourse_ID}: Update title from #{@concourse_title} to #{@title}"
 			@out_of_sync = 1
 		end
 	end
@@ -140,7 +138,7 @@ class ANU_Course
 			end
 			if @in_year != @concourse_year
 				# update year in Concourse so it matches P&C
-				puts "#{@concourse_ID}: Syllabus feed will udate Year from #{@concourse_year} to #{@in_year}"
+				puts "#{@concourse_ID}: Update Year from #{@concourse_year} to #{@in_year}"
 				@out_of_sync = 1
 			end
 			if offering_info.count($sync_year)>1
@@ -152,13 +150,13 @@ class ANU_Course
 				@in_session  = $session_name[offering_info[0]]
 				if @in_session != @concourse_session
 					# if offered only once in the year, update Concourse to the correct session
-					puts "#{@concourse_ID} Syllabus feed will udpate Session from #{@concourse_session}"\
+					puts "#{@concourse_ID}: Update Session from #{@concourse_session}"\
 					" to #{@in_session}"
 					@out_of_sync = 1
 				end
 			end
-		else
-			puts "Not offered in 2016, moving to Unused_DRAFT campus"
+		elsif @concourse_campus == "DRAFT"
+			puts "#{@concourse_ID}: Not offered in #{$sync_year}, moving to Unused_DRAFT campus"
 			@concourse_campus = "Unused_DRAFT"
 		end
 
@@ -170,13 +168,13 @@ class ANU_Course
 		if college.split.count("College") > 1
 			# if offered by more than one College, warn but don't change anything
 			$unsunc_file.write("#{@concourse_ID}, Offered by more than one College,"\
-				" Syllabus feed will not change the College or Department in Concourse.\n")
+				" and no change has been made to the College or Department in Concourse.\n")
 			@college = @concourse_college
 		else
 			@college = college.strip
 			if @college != @concourse_college
 				# if College in P&C doens't match Concourse, update in Concourse
-				puts "#{@concourse_ID}: Syllabus feed will update College from #{@concourse_college} to #{@college} "
+				puts "#{@concourse_ID}: Update College from #{@concourse_college} to #{@college} "
 				@out_of_sync = 1
 			end
 			# check Offered by department
@@ -188,18 +186,18 @@ class ANU_Course
 			if @by_dept == nil
 				#if can't determine Department from P&C, warn but don't change in Concourse
 				$unsunc_file.write('#{@concourse_ID}, "Offered By" in P&C not recognised,'\
-				" Syllabus feed will leave Department unchanged in Concourse\n")
+				" and no change has been made to the Department in Concourse\n")
 				@by_dept = @concourse_department
 			elsif @by_dept != @concourse_department
 				#if Deparment in P&C doesn't match Concourse, update in Concourse
-				puts "#{@concourse_ID}: Syllabus feed will update the offering Department from #{@concourse_department} to #{@by_dept}"
+				puts "#{@concourse_ID}: Update the offering Department from #{@concourse_department} to #{@by_dept}"
 				@out_of_sync =1
 				if @concourse_from_template != $school_template[dept.strip]
 					$unsunc_file.write("#{@concourse_ID}, The Concourse draft is from the "\
 						"#{@concourse_from_template} but it looks like it should be the "\
 						"#{$school_template[dept.strip]},"\
-						"This cannot be changed with Syllabus feed so you will need to sync manually. "\
-						"Or delete the Draft outline and make a replacement.")
+						"This cannot be changed with Syllabus feed - if you want to change it "\
+						"delete the Draft outline and make a replacement.")
 				end
 			end
 		end
@@ -212,7 +210,7 @@ class ANU_Course
 		@unit_value = units_lines.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1].strip 
  		if @unit_value != @concourse_credits
  			# make unit value in Concourse match P&C
- 			puts "#{@concourse_ID}: Syllabus feed will update the unit value from #{@concourse_credits}"\
+ 			puts "#{@concourse_ID}: Update the unit value from #{@concourse_credits}"\
  			" to #{@unit_value}"
  			@out_of_sync = 1
  		end
@@ -228,8 +226,8 @@ class ANU_Course
 				@concourse_delivery = @in_mode
 			elsif @in_mode != @concourse_delivery 
 				#if Concourse does list Delivery Mode, don't chagne it but warn if P&C doesn't match
-	 			$unsunc_file.write("#{@concourse_ID}, P&C delivery mode (#{@in_mode}) does not match,"\
-	 				" Syllabus file will not change Concourse mode (#{@concourse_delivery})\n")
+	 			$unsunc_file.write("#{@concourse_ID}, P&C delivery mode (#{@in_mode}) does not match"\
+	 				" Concourse mode (#{@concourse_delivery}) but no change has been made\n")
 			end
 		end	
 
@@ -244,34 +242,34 @@ class ANU_Course
 				@concourse_instructor = @instructor
 			elsif @instructor != @concourse_instructor
 				#if Concourse does list Instructor, don't change it but warn if P&C doesn't match
-	 			$unsunc_file.write("#{@concourse_ID}, P&C convener (#{@instructor}) does not match,"\
-	 				" Syllabus file will not change Concourse instructor (#{@concourse_instructor})\n")
+	 			$unsunc_file.write("#{@concourse_ID}, P&C convener (#{@instructor}) does not match"\
+	 				" Concourse instructor (#{@concourse_instructor}) but no change has been made\n")
 				@out_of_sync = 1
 			end
 		end
  	end
 
-	def write_course_feed(file)
+	def write_course_feed(file,type)
 		#write COURSE_IDENTIFIER|
-		file.write("#{@concourse_ID or 'error'}|")
+		file.write("#{type == "Final"? @final_ID : @concourse_ID}|")
 		#write TITLE|
 		file.write("#{@title or 'error'}|")
 		#write CAMPUS_IDENTIFIER|
-		file.write("#{@concourse_campus or 'error'}|")
+		file.write("#{type=="Final" ? "FINAL" : @concourse_campus}|")
 		#write DEPARTMENT_IDENTIFIER|
 		file.write("#{@by_dept or 'error'}|")   
 		#write START_DATE|
 		file.write("01/01/#{$sync_year}|")   
 		#write END_DATE|
-		file.write("31/12/#{$sync_year}|")   
+		file.write("12/31/#{$sync_year}|")   
 		#write CLONE_FROM_IDENTIFIER|
-		file.write("#{@concourse_from_template or 'Other'}|")   
+		file.write("#{type =="Final" ? @concourse_ID : @concourse_from_template}|")   
 		#write TIMEZONE|
 		file.write("Australia/Sydney|")
 		#write PREFIX|
-		file.write("#{@prefix or ''}|") 
+		file.write("#{@concourse_ID[0..3] or ''}|") 
 		#write NUMBER|
-		file.write("#{@number or ''}|") 
+		file.write("#{@concourse_ID[4..7] or ''}|") 
 		#write INSTRUCTOR|
 		file.write("#{@concourse_instructor or ''}|")   
 		#write SESSION|
@@ -285,89 +283,122 @@ class ANU_Course
 		#write IS_STRUCTURED|
 		file.write("1|")
 		#write IS_TEMPLATE|
-		file.write("#{@concourse_is_template}|")
+		file.write("#{type=="Draft" ? 1:0}|")
 		#write HIDDEN_FROM_SEARCH
 		file.write("0\n")
-		#puts "Finished writing #{@prefix}#{@number} to the course feed file"
 	end
 
-	def write_section_feed(file)
+	def write_section_feed(file,type)
 		#write COURSE_IDENTIFIER|
-		file.write("#{@Concourse_ID or 'error'}_Draft|")
+		file.write("#{@concourse_ID or 'error'}|")
 		#write SECTION_IDENTIFIER|
- 		file.write("#{@prefix or 'error'}#{@number or 'error'}_Draft_Draft|")
+ 		file.write("#{@concourse_ID or 'error'}_#{type}|")
  		#write SECTION_LABEL
-		file.write("Draft\n")
-		#puts "Finished writing #{@prefix}#{@number} to the section feed file"
+		file.write("#{type}\n")
+	end
+
+	def prepare_for_feed(text)
+		feed_words = ''
+		text_lines = text.strip.lines
+		text_lines.each do |words|
+			feed_words << words.strip + '<br>'
+			feed_words.replace("<br><div>	</div><br>", "")
+		end
 	end
 
 	def get_PandC_description_LOs
+
+
 		#find the course description
-		@description = @doc_PandC.css('div.introduction').inner_html.strip
-		#puts "Description: " + @description
+		text = @doc_PandC.css('div.introduction').inner_html.to_s
+		if text
+			@description = ''
+			text_lines= text.lines
+			text_lines.each do |words|
+				@description << words.strip + '<br>'
+				#@description.replace("<br><div>	</div><br>", "")
+			end
+		else @description = "This course...."
+		end
 
-		search = @doc_PandC.css('div.body__inner').inner_html
-
+		search = @doc_PandC.css('div.body__inner').inner_html.to_s
 		#find the Requisites and Incompatibilbity notices
 		str1_marker = "Incompatibility</h2>"
 		str2_marker = "<h2"
-		search_requisite = search.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
-		if search_requisite
-			@requisite = ActionView::Base.full_sanitizer.sanitize(search_requisite.to_s.strip).strip
-			#puts "Requisites and incompatibility: " + @requisite 
+		text = search[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
+		if text
+			@requisite = ''
+			text_lines= text.strip.lines
+			text_lines.each do |words|
+				@requisite << words.strip + " <br> "
+			end
+		else 
+			@requisite = ""
 		end
+
 
 		#find the other notices (to go into Description Notes)
 		str1_marker = "Other Information</h2>"
 		str2_marker = "<h2"
-		search_other = search.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
-		if search_other
+		text0= search.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
+		if text0
 			str1_marker = ""
 			str2_marker = " <!-- START SUB-PLANS -->"
-			@other = search_other.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1].strip
-			#other = ActionView::Base.full_sanitizer.sanitize(search_other.to_s).strip
-			#puts "Other Information: #{@other or 'unknown'}"
+			text = text0.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
+			if text
+				@other = ''
+				text_lines= text.strip.lines
+				text_lines.each do |words|
+					@other << words.strip + " <br> "
+				end
+			end
+		else
+			@other = ""
 		end
+
 
 		# find the LO's
 		str1_marker = "Learning Outcomes</h2>"
 		str2_marker = '<h2 id="indicative-assessment">'
-		search_LOs = search.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
-		if search_LOs
-			@learningOutcomes = search_LOs.strip
-			#puts "Learning Outcomes: " 
-			#puts @learningOutcomes
+		text = search.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
+		if text
+			@LOs = ''
+			text_lines= text.strip.lines
+			#p text_lines
+			text_lines.each do |words|
+				@LOs << words.strip
+			end
+		else
+			@LOs = "To be determined"
 		end
 	end
 
 	def write_description_feed(file)
 		#write COURSE_IDENTIFIER|
-		file.write("#{@concourse_ID or 'error'}_Draft|")
+		file.write("#{@concourse_ID or 'error'}|")
 		#write DESCRIPTION|
-		file.write("#{@description or ''}|")
+		file.write(@description+'|')
 		#write REQUISITES|
-		file.write("#{@requisite or ''}|")
+		file.write(@requisite + '|')
 		#write NOTES|
-		file.write("#{@other or ''}|")
+		file.write(@other + '|')
 		#write COMMENTS|
 		file.write("written from P&C #{$timestamp}|")
 		#IS_LOCKED
 		file.write("1\n")
-		#puts "Finished writing #{@prefix}#{@number} to the description feed file"
 	end
 
 	def write_LO_feed(file)
 		#write COURSE_IDENTIFIER|
-		file.write("#{@concourse_ID or 'error'}_Draft|")
+		file.write(@concourse_ID + '|')
 		#write OUTCOMES|
-		file.write("#{@learningOutcomes or ''}|")
+		file.write(@LOs + '|')
 		#write NOTES|
 		file.write("|")
 		#write COMMENTS|
 		file.write("written from P&C #{$timestamp}|")
 		#write IS_LOCKED
 		file.write("1\n")
-		#puts "Finished writing #{@prefix}#{@number} to the learning outcomes feed file"
 	end
 
 end
