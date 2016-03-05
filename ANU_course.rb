@@ -9,6 +9,7 @@ class ANU_Course
 
 	def initialize(name)
 		@concourse_ID = name
+		@out_of_sync = 0
 	end
 
 	def get_Concourse_summary(info)
@@ -21,7 +22,7 @@ class ANU_Course
 		@concourse_year = info["Year"].to_s
 		#puts "year: " + @concourse_year
 		@concourse_campus = info["Campus"]
-		#puts "campus : " + @concourse_campus
+		#puts @concourse_ID + " campus : " + @concourse_campus
 		@is_draft = ["DRAFT", "Unused_DRAFT", "Unused"].include? @concourse_campus 
 		@concourse_college = "ANU "+info["School"]
 		#puts "college: " + @concourse_college
@@ -52,7 +53,6 @@ class ANU_Course
 		#puts "audit : " + @audit_status
 		@audit_date = info["Audit Date"]
 		#puts "audit date: " + @audit_date
-		@out_of_sync = 0
 	end
 
 	def check_audit_status
@@ -81,21 +81,32 @@ class ANU_Course
 		puts  "to finise? "+ @to_finalise.to_s
 	end
 
-	#def change_to_final
-#		@concourse_from_template = @concourse_ID
-#		@concourse_ID = @final_ID
-#		@concourse_campus = "FINAL"
-		#set start and end dates
-		#@concourse_start = "01/01/#{$sync_year}"
-		#@concourse_end = "12/31/#{$sync_year}"  
-#		@concourse_is_template = 0
-#	end
+	def retire
+		if @concourse_title.include?(" Not in P&C")
+			@title = @concourse_title
+		else
+			@title = @concourse_title + " - Not in P&C"
+			puts "#{@concourse_ID}: Not on P&C for #{$sync_year} - adding this to title"
+			@out_of_sync = 1
+		end
+		@by_dept = @concourse_department
+		@in_year = ""
+		@in_session = ""
+		@unit_value = @concourse_credits
+		if @concourse_campus == "DRAFT"
+			@concourse_campus = "Unused_DRAFT"			
+			puts "#{@concourse_ID}, Not on P&C for #{$sync_year}, moving to Unused DRAFT campus"
+			@out_of_sync = 1
+		end
+		$unsunc_file.write("#{@concourse_ID}, Not on P&C for #{$sync_year}, "\
+			"Check with School if you can delete it from Concourse\n")
+	end
 
 	def open_PandC
 		#open the matching page in P&C
 		url = "http://programsandcourses.anu.edu.au/"+$sync_year+"/course/"+@concourse_ID[0..7]
 		encoded_url = URI.encode(url)
-		@doc_PandC=Nokogiri::XML(open(encoded_url))
+		@doc_PandC=Nokogiri::HTML(open(encoded_url))
 		#puts "I'm in"
 		#puts @doc_PandC
 
@@ -158,6 +169,7 @@ class ANU_Course
 		elsif @concourse_campus == "DRAFT"
 			puts "#{@concourse_ID}: Not offered in #{$sync_year}, moving to Unused_DRAFT campus"
 			@concourse_campus = "Unused_DRAFT"
+			@out_of_sync = 1
 		end
 
 		#check College
@@ -168,14 +180,15 @@ class ANU_Course
 		if college.split.count("College") > 1
 			# if offered by more than one College, warn but don't change anything
 			$unsunc_file.write("#{@concourse_ID}, Offered by more than one College,"\
-				" and no change has been made to the College or Department in Concourse.\n")
+				" No change has been made to the College or Department in Concourse.\n")
 			@college = @concourse_college
 		else
 			@college = college.strip
 			if @college != @concourse_college
 				# if College in P&C doens't match Concourse, update in Concourse
-				puts "#{@concourse_ID}: Update College from #{@concourse_college} to #{@college} "
-				@out_of_sync = 1
+				$unsunc_file.write("#{@concourse_ID}, P&C College #{@college} does not match "\
+					"Concourse College #{@concourse_college},"\
+					" No change has been made to the College or Department in Concourse.\n")
 			end
 			# check Offered by department
 			offer_heading = summary_headings.index("Offered by")
@@ -185,8 +198,8 @@ class ANU_Course
 			@by_dept = $concourse_department_name[dept.strip]
 			if @by_dept == nil
 				#if can't determine Department from P&C, warn but don't change in Concourse
-				$unsunc_file.write('#{@concourse_ID}, "Offered By" in P&C not recognised,'\
-				" and no change has been made to the Department in Concourse\n")
+				$unsunc_file.write(@concourse_ID + ", 'Offered By' in P&C not recognised,"\
+				" No change has been made to the Department in Concourse\n")
 				@by_dept = @concourse_department
 			elsif @by_dept != @concourse_department
 				#if Deparment in P&C doesn't match Concourse, update in Concourse
@@ -197,7 +210,7 @@ class ANU_Course
 						"#{@concourse_from_template} but it looks like it should be the "\
 						"#{$school_template[dept.strip]},"\
 						"This cannot be changed with Syllabus feed - if you want to change it "\
-						"delete the Draft outline and make a replacement.")
+						"delete the Draft outline and make a replacement.\n")
 				end
 			end
 		end
@@ -227,7 +240,7 @@ class ANU_Course
 			elsif @in_mode != @concourse_delivery 
 				#if Concourse does list Delivery Mode, don't chagne it but warn if P&C doesn't match
 	 			$unsunc_file.write("#{@concourse_ID}, P&C delivery mode (#{@in_mode}) does not match"\
-	 				" Concourse mode (#{@concourse_delivery}) but no change has been made\n")
+	 				" Concourse mode (#{@concourse_delivery}), No change has been made\n")
 			end
 		end	
 
@@ -237,14 +250,20 @@ class ANU_Course
 			str1_marker = summary_headings[convener_on_PandC]
 			str2_marker = summary_headings[convener_on_PandC+1]
 			@instructor = summary_lines.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1].strip
+			@instructor.gsub!(/\n/, ' ')
 			if @instructor == nil
 				#if Concourse doesn't list Instructor add from P&C
 				@concourse_instructor = @instructor
 			elsif @instructor != @concourse_instructor
 				#if Concourse does list Instructor, don't change it but warn if P&C doesn't match
-	 			$unsunc_file.write("#{@concourse_ID}, P&C convener (#{@instructor}) does not match"\
-	 				" Concourse instructor (#{@concourse_instructor}) but no change has been made\n")
-				@out_of_sync = 1
+	 			if $sync_instructor == 1
+	 				@out_of_sync = 1
+	 				puts "#{@concourse_ID}: change instructor from #{@concourse_instructor} to (#{@instructor})"
+					@concourse_instructor = @instructor		 			
+	 			else
+	 				$unsunc_file.write("#{@concourse_ID}, P&C convener (#{@instructor}) does not match"\
+	 				" Concourse instructor (#{@concourse_instructor}), No change has been made\n")
+				end
 			end
 		end
  	end
@@ -297,78 +316,93 @@ class ANU_Course
 		file.write("#{type}\n")
 	end
 
-	def prepare_for_feed(text)
-		feed_words = ''
-		text_lines = text.strip.lines
+	def prepare_text_for_feed
+		all_words = ''
+		@text.gsub!('frameborder="0"',"") #maybe remove this
+		@text.gsub!(' allowfullscreen=""&gt;',"") # and this - they were put to fix one Crawford course video display 
+		@text.gsub!(/<div.*?>|<\/div>/, '')
+		@text.gsub!("<p><iframe", "<div><iframe") #is the div in the replacement necessary?
+		@text.gsub!("</iframe></p>", "</iframe></div>") #or here?
+		text_lines = @text.strip.lines
 		text_lines.each do |words|
-			feed_words << words.strip + '<br>'
-			feed_words.replace("<br><div>	</div><br>", "")
+			words.gsub!(/\n/, ' ')
+			words.gsub!(/\t/, ' ')
+			all_words << " "
+			all_words << words.strip 
 		end
+		@feed_words = all_words
 	end
 
 	def get_PandC_description_LOs
 
-
-		#find the course description
-		text = @doc_PandC.css('div.introduction').inner_html.to_s
-		if text
-			@description = ''
-			text_lines= text.lines
-			text_lines.each do |words|
-				@description << words.strip + '<br>'
-				#@description.replace("<br><div>	</div><br>", "")
-			end
-		else @description = "This course...."
+		temp_file = open("temp_file",'w')
+		temp_file.write(@doc_PandC.css('html'))
+		search_html = @doc_PandC.css('div.introduction')
+		pieces = search_html.inner_html.split("<h2")
+		@text = pieces[0]
+		if @text
+			prepare_text_for_feed
+			@description = @feed_words
+		else 
+			@description = "This course...."
 		end
 
-		search = @doc_PandC.css('div.body__inner').inner_html.to_s
+		search_html = @doc_PandC.css('div.body__inner').inner_html.to_s
+
 		#find the Requisites and Incompatibilbity notices
 		str1_marker = "Incompatibility</h2>"
 		str2_marker = "<h2"
-		text = search[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
-		if text
-			@requisite = ''
-			text_lines= text.strip.lines
-			text_lines.each do |words|
-				@requisite << words.strip + " <br> "
-			end
+		@text = search_html[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
+		if @text
+			prepare_text_for_feed
+			@requisite = @feed_words
 		else 
 			@requisite = ""
 		end
 
-
 		#find the other notices (to go into Description Notes)
 		str1_marker = "Other Information</h2>"
 		str2_marker = "<h2"
-		text0= search.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
+		text0= search_html.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
 		if text0
 			str1_marker = ""
 			str2_marker = " <!-- START SUB-PLANS -->"
-			text = text0.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
-			if text
-				@other = ''
-				text_lines= text.strip.lines
-				text_lines.each do |words|
-					@other << words.strip + " <br> "
-				end
-			end
+			@text = text0.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
+			if @text
+				prepare_text_for_feed
+				@other = @feed_words
+			else 
+				@other = ""
+			end		
 		else
 			@other = ""
+		end
+
+		str1_marker = "Assumed Knowledge</h2>"
+		str2_marker = "<h2"
+		text0= search_html.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
+		#puts text0
+		if text0
+			str1_marker = ""
+			str2_marker = " <!-- START SUB-PLANS -->"
+			@text = text0.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
+			if @text
+				prepare_text_for_feed
+				@other << "<strong> Assumed Knowledge </strong> <br>"
+				@other << @feed_words
+			end	
 		end
 
 
 		# find the LO's
 		str1_marker = "Learning Outcomes</h2>"
 		str2_marker = '<h2 id="indicative-assessment">'
-		text = search.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
-		if text
-			@LOs = ''
-			text_lines= text.strip.lines
-			#p text_lines
-			text_lines.each do |words|
-				@LOs << words.strip
-			end
-		else
+		@text = search_html.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
+
+		if @text
+			prepare_text_for_feed
+			@LOs = @feed_words
+		else 
 			@LOs = "To be determined"
 		end
 	end
