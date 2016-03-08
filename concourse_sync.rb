@@ -25,7 +25,7 @@ concourse_syllabus_report = "Concourse_Syllabus_report.csv"
 puts "I will check sync status for all the courses in the Concourse Syllabus report "\
 	 "#{concourse_syllabus_report}"
 
-$sync_instructor = 1
+sync_instructor = 0
 
 CSV.foreach(concourse_syllabus_report, :headers => true) do |x| 
 	course = ANU_Course.new(x["Course Identifier"].to_s.strip)
@@ -36,7 +36,8 @@ CSV.foreach(concourse_syllabus_report, :headers => true) do |x|
 			course.open_PandC
 			if course.title == "Page not found"
 				course.retire
-				if course.out_of_sync==1
+				if course.out_of_sync > 0
+					puts '# of changes ' + course.out_of_sync.to_s
 					course.write_course_feed($course_feed_file, "Draft")
 				end
 			else
@@ -47,7 +48,8 @@ CSV.foreach(concourse_syllabus_report, :headers => true) do |x|
 				end
 				course.match_PandC_summary
 				# and use it to create feed files for updating Concourse
-				if course.out_of_sync==1
+				if course.out_of_sync > 0
+					puts '# of changes ' + course.out_of_sync.to_s
 					course.write_course_feed($course_feed_file, "Draft")
 				end
 				course.get_PandC_description_LOs
@@ -65,5 +67,6 @@ CSV.foreach(concourse_syllabus_report, :headers => true) do |x|
 	end
 end
 
+puts
 puts "You can now use the course, description and LO feed to update Concourse."
 puts "Remember to check the unsunc file to see things you'll need to handle manually."

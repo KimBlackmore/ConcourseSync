@@ -55,31 +55,55 @@ class ANU_Course
 		#puts "audit date: " + @audit_date
 	end
 
+	def create_empty(info)
+		@concourse_title = info["TITLE"].to_s
+		@concourse_from_template = ""
+		@concourse_session = ""
+		@concourse_year = ""
+		@concourse_campus = "DRAFT"		
+		@concourse_college = ""
+		@concourse_department = ""
+		@concourse_credits = ""
+		@concourse_delivery = "" 
+		@concourse_instructor = ""
+		@concourse_last_modified = ""
+		@concourse_is_template = ""
+	end
+
 	def check_audit_status
 		@to_finalise = 0
 		if @concourse_campus == "DRAFT" and @audit_status =="Reviewed"
-			#puts "campus : " + @concourse_campus
-			newIDsuffix = "_"+$short_name[@concourse_session]+"_"+@concourse_year
-			@final_ID = @concourse_ID.sub! "DRAFT", newIDsuffix	
+			newIDsuffix = $short_name[@concourse_session]+"_"+@concourse_year
+			@final_ID = @concourse_ID.gsub("Draft", newIDsuffix)
 			if $courselist.include? (@final_ID)
-				puts @final_ID + "is already created"########## not working ############
+				#puts @final_ID + " is already created"
 				return
 			else		
-				audit_year = @audit_date[-2..-1].to_i
+				audit_year = 2000+ @audit_date[-2..-1].to_i
 				#puts "audit year " + audit_year.to_s + " this year " + $time.year.to_s
 				audit_month = @audit_date[-5..-4].to_i
-				puts "audit month " + audit_month.to_s + " this month " + $time.month.to_s
+				#puts "audit month " + audit_month.to_s + " this month " + $time.month.to_s
 				if audit_year == $time.year and audit_month >= ($time.month)-3
 					@to_finalise = 1
+					#puts "finalise #{@concourse_ID} to #{@final_ID}"
 				elsif $time.month <3 and audit_year.to_s == $time.year-1 and audit.month >10
 					@to_finalise = 1
+					#puts "finalise #{@concourse_ID} to #{@final_ID}"
 				else
-					puts "hasn't been recently audited"
+					#puts "#{@concourse_ID} has not final version and hasn't been recently audited"
 				end
 			end
-		end
-		puts  "to finise? "+ @to_finalise.to_s
+		end 
 	end
+
+	def make_final
+		@title = @concourse_title
+		@in_session = @concourse_session
+		@in_year = @concourse_year
+		@by_dept = @concourse_department
+		@unit_value = @concourse_credits
+	end
+
 
 	def retire
 		if @concourse_title.include?(" Not in P&C")
@@ -87,7 +111,7 @@ class ANU_Course
 		else
 			@title = @concourse_title + " - Not in P&C"
 			puts "#{@concourse_ID}: Not on P&C for #{$sync_year} - adding this to title"
-			@out_of_sync = 1
+			@out_of_sync += 1
 		end
 		@by_dept = @concourse_department
 		@in_year = ""
@@ -96,7 +120,7 @@ class ANU_Course
 		if @concourse_campus == "DRAFT"
 			@concourse_campus = "Unused_DRAFT"			
 			puts "#{@concourse_ID}, Not on P&C for #{$sync_year}, moving to Unused DRAFT campus"
-			@out_of_sync = 1
+			@out_of_sync += 1
 		end
 		$unsunc_file.write("#{@concourse_ID}, Not on P&C for #{$sync_year}, "\
 			"Check with School if you can delete it from Concourse\n")
@@ -108,6 +132,7 @@ class ANU_Course
 		encoded_url = URI.encode(url)
 		@doc_PandC=Nokogiri::HTML(open(encoded_url))
 		#puts "I'm in"
+		$temp_file.write(@doc_PandC)
 		#puts @doc_PandC
 
 		# check Title
@@ -119,7 +144,7 @@ class ANU_Course
 		if @title != @concourse_title
 			# update Concourse to ensure titles match
 			puts "#{@concourse_ID}: Update title from #{@concourse_title} to #{@title}"
-			@out_of_sync = 1
+			@out_of_sync += 1
 		end
 	end
 
@@ -143,6 +168,7 @@ class ANU_Course
 			str2_marker = summary_headings[@offered_in_sync_year+1]
 			offering_info = summary_lines.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1].split
 			@in_year = offering_info[-1]
+			puts @in_year
 			if @in_year != $sync_year
 				#if the year written in P&C doens't match the year in the url, complain
 				puts "#{@concourse_ID}: Something wrong with the scheduling year in PandC"
@@ -150,7 +176,7 @@ class ANU_Course
 			if @in_year != @concourse_year
 				# update year in Concourse so it matches P&C
 				puts "#{@concourse_ID}: Update Year from #{@concourse_year} to #{@in_year}"
-				@out_of_sync = 1
+				@out_of_sync += 1
 			end
 			if offering_info.count($sync_year)>1
 				# if offered more than once in the year, warn but don't update session
@@ -163,17 +189,19 @@ class ANU_Course
 					# if offered only once in the year, update Concourse to the correct session
 					puts "#{@concourse_ID}: Update Session from #{@concourse_session}"\
 					" to #{@in_session}"
-					@out_of_sync = 1
+					@out_of_sync += 1
 				end
 			end
 		elsif @concourse_campus == "DRAFT"
 			puts "#{@concourse_ID}: Not offered in #{$sync_year}, moving to Unused_DRAFT campus"
 			@concourse_campus = "Unused_DRAFT"
-			@out_of_sync = 1
+			@out_of_sync += 1
 		end
 
 		#check College
+		puts summary_headings
 		college_heading = summary_headings.index("ANU College")
+		puts college_heading
 		str1_marker = summary_headings[college_heading]
 		str2_marker = summary_headings[college_heading+1]
 		college = summary_lines.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1].to_s
@@ -204,7 +232,7 @@ class ANU_Course
 			elsif @by_dept != @concourse_department
 				#if Deparment in P&C doesn't match Concourse, update in Concourse
 				puts "#{@concourse_ID}: Update the offering Department from #{@concourse_department} to #{@by_dept}"
-				@out_of_sync =1
+				@out_of_sync += 1
 				if @concourse_from_template != $school_template[dept.strip]
 					$unsunc_file.write("#{@concourse_ID}, The Concourse draft is from the "\
 						"#{@concourse_from_template} but it looks like it should be the "\
@@ -225,7 +253,7 @@ class ANU_Course
  			# make unit value in Concourse match P&C
  			puts "#{@concourse_ID}: Update the unit value from #{@concourse_credits}"\
  			" to #{@unit_value}"
- 			@out_of_sync = 1
+ 			@out_of_sync += 1
  		end
 
 		# check mode of delivery
@@ -249,20 +277,28 @@ class ANU_Course
 		if convener_on_PandC
 			str1_marker = summary_headings[convener_on_PandC]
 			str2_marker = summary_headings[convener_on_PandC+1]
-			@instructor = summary_lines.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1].strip
-			@instructor.gsub!(/\n/, ' ')
-			if @instructor == nil
-				#if Concourse doesn't list Instructor add from P&C
-				@concourse_instructor = @instructor
-			elsif @instructor != @concourse_instructor
-				#if Concourse does list Instructor, don't change it but warn if P&C doesn't match
-	 			if $sync_instructor == 1
-	 				@out_of_sync = 1
-	 				puts "#{@concourse_ID}: change instructor from #{@concourse_instructor} to (#{@instructor})"
-					@concourse_instructor = @instructor		 			
-	 			else
-	 				$unsunc_file.write("#{@concourse_ID}, P&C convener (#{@instructor}) does not match"\
-	 				" Concourse instructor (#{@concourse_instructor}), No change has been made\n")
+			text = summary_lines.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1].strip
+			@instructor = prepare_text_for_feed(text)
+			#puts "#{@concourse_ID}: #{@instructor}"
+			if @instructor != ""
+				#puts "P&C has a name - is it the same as #{@concourse_instructor}?"
+		 		if @concourse_instructor == "" #if Concourse doesn't list Instructor add from P&C
+					@concourse_instructor = @instructor
+					#puts "#{@concourse_ID}: add instructor #{@instructor}"
+					@out_of_sync += 1
+				elsif @instructor != @concourse_instructor 	#if Concourse does list Instructor, and it differs from P&C 
+	 				#puts "no"
+	 				if $sync_instructor == 1
+	 					@out_of_sync += 1
+	 					#puts "#{@concourse_ID}: change instructor from #{@concourse_instructor} to #{@instructor}"
+						@concourse_instructor = @instructor		 			
+	 				else #if Concourse does list Instructor, don't change it but warn if P&C doesn't match
+	 					$unsunc_file.write("#{@concourse_ID}, P&C convener (#{@instructor}) does not match"\
+	 						" Concourse instructor (#{@concourse_instructor}), No change has been made\n")
+
+					end				
+				else
+					#puts "and so does Concourse and they match"
 				end
 			end
 		end
@@ -309,40 +345,62 @@ class ANU_Course
 
 	def write_section_feed(file,type)
 		#write COURSE_IDENTIFIER|
-		file.write("#{@concourse_ID or 'error'}|")
+		file.write("#{type =="Final" ? @final_ID : @concourse_ID}|")
 		#write SECTION_IDENTIFIER|
- 		file.write("#{@concourse_ID or 'error'}_#{type}|")
+ 		file.write("#{type =="Final" ? @final_ID : @concourse_ID}_#{type}|")
  		#write SECTION_LABEL
 		file.write("#{type}\n")
 	end
 
-	def prepare_text_for_feed
-		all_words = ''
-		@text.gsub!('frameborder="0"',"") #maybe remove this
-		@text.gsub!(' allowfullscreen=""&gt;',"") # and this - they were put to fix one Crawford course video display 
-		@text.gsub!(/<div.*?>|<\/div>/, '')
-		@text.gsub!("<p><iframe", "<div><iframe") #is the div in the replacement necessary?
-		@text.gsub!("</iframe></p>", "</iframe></div>") #or here?
-		text_lines = @text.strip.lines
-		text_lines.each do |words|
-			words.gsub!(/\n/, ' ')
-			words.gsub!(/\t/, ' ')
-			all_words << " "
-			all_words << words.strip 
+	def prepare_text_for_feed(text0)
+		if text0 == nil
+			""
+		else
+			#puts text0
+			all_words = ''
+			if text0.include? "SUB-PLANS"
+				str1_marker = ""
+				str2_marker = " <!-- START SUB-PLANS -->"
+				text = text0.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
+			else
+				text = text0
+			end
+			#puts "became" + text.to_s
+			if text == nil
+				#puts "which is nil"
+				""
+			else
+				#puts "which I can do things with"
+				text.gsub!('frameborder="0"',"") #maybe remove this
+				text.gsub!(' allowfullscreen=""&gt;',"") # and this - they were put to fix one Crawford course video display 
+				text.gsub!(/<div.*?>|<\/div>/, '')
+				text.gsub!("<p><iframe", "<div><iframe") #is the div in the replacement necessary?
+				text.gsub!("</iframe></p>", "</iframe></div>") #or here?
+				text_lines = text.strip.lines
+				text_lines.each do |words|
+					words.gsub!(/\n/, ' ')
+					words.gsub!(/\t/, ' ')
+					all_words << " "
+					all_words << words.strip 
+				end	
+				$temp_file.write(  "like make this")
+				$temp_file.write( all_words)
+				all_words
+			end
 		end
-		@feed_words = all_words
 	end
 
 	def get_PandC_description_LOs
-
-		temp_file = open("temp_file",'w')
-		temp_file.write(@doc_PandC.css('html'))
+		#temp_file.write(@doc_PandC.css('html'))
 		search_html = @doc_PandC.css('div.introduction')
+		$temp_file.write("#{@concourse_ID} \n")
+		puts @concourse_ID
+		$temp_file.write( search_html)
+		puts
 		pieces = search_html.inner_html.split("<h2")
-		@text = pieces[0]
-		if @text
-			prepare_text_for_feed
-			@description = @feed_words
+		text = pieces[0]
+		if text
+			@description = prepare_text_for_feed(text)
 		else 
 			@description = "This course...."
 		end
@@ -352,10 +410,9 @@ class ANU_Course
 		#find the Requisites and Incompatibilbity notices
 		str1_marker = "Incompatibility</h2>"
 		str2_marker = "<h2"
-		@text = search_html[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
-		if @text
-			prepare_text_for_feed
-			@requisite = @feed_words
+		text = search_html[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
+		if text
+			@requisite = prepare_text_for_feed(text)
 		else 
 			@requisite = ""
 		end
@@ -367,10 +424,9 @@ class ANU_Course
 		if text0
 			str1_marker = ""
 			str2_marker = " <!-- START SUB-PLANS -->"
-			@text = text0.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
-			if @text
-				prepare_text_for_feed
-				@other = @feed_words
+			text = text0.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
+			if text
+				@other = prepare_text_for_feed(text0)
 			else 
 				@other = ""
 			end		
@@ -385,11 +441,10 @@ class ANU_Course
 		if text0
 			str1_marker = ""
 			str2_marker = " <!-- START SUB-PLANS -->"
-			@text = text0.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
-			if @text
-				prepare_text_for_feed
+			text = text0.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
+			if text
 				@other << "<strong> Assumed Knowledge </strong> <br>"
-				@other << @feed_words
+				@other << prepare_text_for_feed(text)
 			end	
 		end
 
@@ -397,11 +452,10 @@ class ANU_Course
 		# find the LO's
 		str1_marker = "Learning Outcomes</h2>"
 		str2_marker = '<h2 id="indicative-assessment">'
-		@text = search_html.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
+		text = search_html.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
 
-		if @text
-			prepare_text_for_feed
-			@LOs = @feed_words
+		if text
+			@LOs = prepare_text_for_feed (text)
 		else 
 			@LOs = "To be determined"
 		end

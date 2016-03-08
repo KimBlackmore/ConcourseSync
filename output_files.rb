@@ -37,6 +37,10 @@ def open_output_files(output_folder)
 	$description_feed_file = open(description_feed_filename,'w')
 	$description_feed_file.truncate(0)
 	$description_feed_file.write("COURSE_IDENTIFIER|DESCRIPTION|REQUISITES|NOTES|COMMENTS|IS_LOCKED\n")
+
+	#for debugging:
+	$temp_file = open("temp_file",'w')
+
 end
  
 
