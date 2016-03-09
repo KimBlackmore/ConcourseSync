@@ -10,6 +10,10 @@ class ANU_Course
 	def initialize(name)
 		@concourse_ID = name
 		@out_of_sync = 0
+		str1_marker = ""
+		str2_marker = "_"
+		@code = @concourse_ID[/#{str1_marker}(.*?)#{str2_marker}/m, 1].to_s
+		#puts @code
 	end
 
 	def get_Concourse_summary(info)
@@ -109,9 +113,12 @@ class ANU_Course
 		if @concourse_title.include?(" Not in P&C")
 			@title = @concourse_title
 		else
-			@title = @concourse_title + " - Not in P&C"
-			puts "#{@concourse_ID}: Not on P&C for #{$sync_year} - adding this to title"
-			@out_of_sync += 1
+			puts "#{@concourse_ID}: Not on P&C for #{$sync_year}"
+			if $add_noPC_to_titile == 1
+				" - adding this to title"
+				@title = @concourse_title + " - Not in P&C"
+				@out_of_sync += 1
+			end
 		end
 		@by_dept = @concourse_department
 		@in_year = ""
@@ -128,7 +135,7 @@ class ANU_Course
 
 	def open_PandC
 		#open the matching page in P&C
-		url = "http://programsandcourses.anu.edu.au/"+$sync_year+"/course/"+@concourse_ID[0..7]
+		url = "http://programsandcourses.anu.edu.au/"+$sync_year+"/course/"+@code
 		encoded_url = URI.encode(url)
 		@doc_PandC=Nokogiri::HTML(open(encoded_url))
 		#puts "I'm in"
@@ -168,14 +175,16 @@ class ANU_Course
 			str2_marker = summary_headings[@offered_in_sync_year+1]
 			offering_info = summary_lines.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1].split
 			@in_year = offering_info[-1]
-			puts @in_year
+			#puts @in_year
 			if @in_year != $sync_year
 				#if the year written in P&C doens't match the year in the url, complain
 				puts "#{@concourse_ID}: Something wrong with the scheduling year in PandC"
 			end
 			if @in_year != @concourse_year
 				# update year in Concourse so it matches P&C
-				puts "#{@concourse_ID}: Update Year from #{@concourse_year} to #{@in_year}"
+				if $task == "Sync"
+					puts "#{@concourse_ID}: Update Year from #{@concourse_year} to #{@in_year}"
+				end
 				@out_of_sync += 1
 			end
 			if offering_info.count($sync_year)>1
@@ -187,21 +196,25 @@ class ANU_Course
 				@in_session  = $session_name[offering_info[0]]
 				if @in_session != @concourse_session
 					# if offered only once in the year, update Concourse to the correct session
-					puts "#{@concourse_ID}: Update Session from #{@concourse_session}"\
-					" to #{@in_session}"
+					if $task == "Sync"
+						puts "#{@concourse_ID}: Update Session from #{@concourse_session}"\
+						" to #{@in_session}"
+					end
 					@out_of_sync += 1
 				end
 			end
 		elsif @concourse_campus == "DRAFT"
-			puts "#{@concourse_ID}: Not offered in #{$sync_year}, moving to Unused_DRAFT campus"
+			if $task == "Sync"
+				puts "#{@concourse_ID}: Not offered in #{$sync_year}, moving to Unused_DRAFT campus"
+			end
 			@concourse_campus = "Unused_DRAFT"
 			@out_of_sync += 1
 		end
 
 		#check College
-		puts summary_headings
+		#puts summary_headings
 		college_heading = summary_headings.index("ANU College")
-		puts college_heading
+		#puts college_heading
 		str1_marker = summary_headings[college_heading]
 		str2_marker = summary_headings[college_heading+1]
 		college = summary_lines.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1].to_s
@@ -231,7 +244,9 @@ class ANU_Course
 				@by_dept = @concourse_department
 			elsif @by_dept != @concourse_department
 				#if Deparment in P&C doesn't match Concourse, update in Concourse
-				puts "#{@concourse_ID}: Update the offering Department from #{@concourse_department} to #{@by_dept}"
+				if $task == "Sync"
+					puts "#{@concourse_ID}: Update the offering Department from #{@concourse_department} to #{@by_dept}"
+				end
 				@out_of_sync += 1
 				if @concourse_from_template != $school_template[dept.strip]
 					$unsunc_file.write("#{@concourse_ID}, The Concourse draft is from the "\
@@ -251,8 +266,10 @@ class ANU_Course
 		@unit_value = units_lines.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1].strip 
  		if @unit_value != @concourse_credits
  			# make unit value in Concourse match P&C
- 			puts "#{@concourse_ID}: Update the unit value from #{@concourse_credits}"\
- 			" to #{@unit_value}"
+ 			if $task == "Sync"
+				puts "#{@concourse_ID}: Update the unit value from #{@concourse_credits}"\
+ 				" to #{@unit_value}"
+ 			end
  			@out_of_sync += 1
  		end
 
@@ -394,9 +411,9 @@ class ANU_Course
 		#temp_file.write(@doc_PandC.css('html'))
 		search_html = @doc_PandC.css('div.introduction')
 		$temp_file.write("#{@concourse_ID} \n")
-		puts @concourse_ID
+		#puts @concourse_ID
 		$temp_file.write( search_html)
-		puts
+		#puts
 		pieces = search_html.inner_html.split("<h2")
 		text = pieces[0]
 		if text

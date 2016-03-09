@@ -8,6 +8,7 @@ load './output_files.rb' #the bits for opening all the right files
 load './ANU_course.rb' #define the course class and its methods
 load './concourse_names.rb' #mappings of P&C terminology to concourse 
 
+$task = "Sync"
 time = Time.new
 $timestamp = time.strftime("_%Y-%m-%d")
 
@@ -21,11 +22,12 @@ end
 open_output_files("SyncOutput")
 
 #next open input file
-concourse_syllabus_report = "Concourse_Syllabus_report.csv"
+concourse_syllabus_report = "Concourse_Syllabus_report-all.csv"
 puts "I will check sync status for all the courses in the Concourse Syllabus report "\
 	 "#{concourse_syllabus_report}"
 
-sync_instructor = 0
+$sync_instructor = 0
+$add_noPC_to_titile = 0
 
 CSV.foreach(concourse_syllabus_report, :headers => true) do |x| 
 	course = ANU_Course.new(x["Course Identifier"].to_s.strip)
@@ -37,19 +39,19 @@ CSV.foreach(concourse_syllabus_report, :headers => true) do |x|
 			if course.title == "Page not found"
 				course.retire
 				if course.out_of_sync > 0
-					puts '# of changes ' + course.out_of_sync.to_s
+					#puts '# of changes ' + course.out_of_sync.to_s
 					course.write_course_feed($course_feed_file, "Draft")
 				end
 			else
 				# get the info from P&C 
-				if course.concourse_ID != course.concourse_ID[0..7]+"_Draft"
+				if course.concourse_ID != course.code+"_Draft"
 					$unsunc_file.write("#{course.concourse_ID}, Not a standard format course ID,"\
-						"Will sync to #{course.concourse_ID[0..7]} on P&C\n")
+						"Will sync to #{course.code} on P&C\n")
 				end
 				course.match_PandC_summary
 				# and use it to create feed files for updating Concourse
 				if course.out_of_sync > 0
-					puts '# of changes ' + course.out_of_sync.to_s
+					#puts '# of changes ' + course.out_of_sync.to_s
 					course.write_course_feed($course_feed_file, "Draft")
 				end
 				course.get_PandC_description_LOs
@@ -58,8 +60,8 @@ CSV.foreach(concourse_syllabus_report, :headers => true) do |x|
 			end
 		else
 			#puts "unsunc"
-			$unsunc_file.write("#{course.concourse_ID}, Not in Draft (or Unused_draft) campus in Concourse,"\
-				"Sync process will skip this course\n")
+			#$unsunc_file.write("#{course.concourse_ID}, Not in Draft (or Unused_draft) campus in Concourse,"\
+			#	"Sync process will skip this course\n")
 		end
 	else
 		$unsunc_file.write("#{course.concourse_ID}, Not a Draft outline,"\

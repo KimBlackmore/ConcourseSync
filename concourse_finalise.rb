@@ -8,6 +8,7 @@ load './output_files.rb' #the bits for opening all the right files
 load './ANU_course.rb' #define the course class and its methods
 load './concourse_names.rb' #mappings of P&C terminology to concourse 
 
+$task = "Finalise"
 $time = Time.new
 $timestamp = $time.strftime("_%Y-%m-%d")
 #from October, sync Concourse drafts to P&C for the next year
@@ -19,7 +20,7 @@ end
 
 
 #next open input file
-concourse_syllabus_report = "Concourse_Syllabus_report.csv"
+concourse_syllabus_report = "Concourse_Syllabus_report_to_final.csv"
 puts "I will make final copies for all the draft courses in the Concourse Syllabus report "\
 	 "#{concourse_syllabus_report} that have been reviewed in the last 3 months "\
 	 "AND don't already have a final copy that I can find in the Syllabus Report."
@@ -36,15 +37,7 @@ $courselist = Set.new
 CSV.foreach(concourse_syllabus_report, :headers => true) do |x| 
 	$courselist.add(x["Course Identifier"])
 end
-#p $courselist
 
-#puts "Which department/school do you want me to finalise?"
-#puts "Enter one of: " 
-#p $concourse_department_name.values.uniq
-#dept_to_finalise = gets.strip
-
-#puts "I will find all the drafts for #{dept_to_finalise}in "\
-#	"#{concourse_syllabus_report} that need to be finalised"
 
 CSV.foreach(concourse_syllabus_report, :headers => true) do |x| 
 	course = ANU_Course.new(x["Course Identifier"].to_s.strip)
