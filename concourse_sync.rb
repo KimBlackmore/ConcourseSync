@@ -48,7 +48,8 @@ CSV.foreach(concourse_syllabus_report, :headers => true) do |x|
 					$unsunc_file.write("#{course.concourse_ID}, Not a standard format course ID,"\
 						"Will sync to #{course.code} on P&C\n")
 				end
-				course.match_PandC_summary
+				course.get_PandC_info
+				course.match_PandC_info
 				# and use it to create feed files for updating Concourse
 				if course.out_of_sync > 0
 					#puts '# of changes ' + course.out_of_sync.to_s
