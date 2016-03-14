@@ -38,7 +38,7 @@ They take input files which are csv files saved in the Input directory under the
 **concourse_finalise.rb**
 
 <em> Input </em>
-  * Concourse_Syllabus_report_to_final.com - syllabus report from Concourse for the classes you want to finalise, usually Draft outlines for a particular year and session, and a particular Department
+  * Concourse_Syllabus_report_to_final.com - syllabus report from Concourse for the classes you want to finalise, usually all outlines for a particular year and session, and a particular Department
   
 <em> Output </em>
 
