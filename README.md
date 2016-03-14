@@ -7,7 +7,7 @@ The syncing software has three main programs
 * concourse_sync.rb
 * concourse_finalise.rb
 
-They take input files which are csv files saved in the same directory as the main files, and output feed files ready for uploading to Concourse
+They take input files which are csv files saved in the Input directory under the main files, and output feed files ready for uploading to Concourse
 
 **concourse_add_drafts.rb**
 
