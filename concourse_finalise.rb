@@ -20,8 +20,8 @@ end
 
 
 #next open input file
-concourse_syllabus_report = "Concourse_Syllabus_report_to_final.csv"
-puts "I will make final copies for all the draft courses in the Concourse Syllabus report "\
+concourse_syllabus_report = "Input/Concourse_Syllabus_report_to_final.csv"
+puts "I will make final copies for all the draft courses in "\
 	 "#{concourse_syllabus_report} that have been reviewed in the last 3 months "\
 	 "AND don't already have a final copy that I can find in the Syllabus Report."
 puts "If you don't want that, hit CTRL-C (^C)."
@@ -41,11 +41,9 @@ end
 
 CSV.foreach(concourse_syllabus_report, :headers => true) do |x| 
 	course = ANU_Course.new(x["Course Identifier"].to_s.strip)
-	course.get_Concourse_summary(x)
-	#puts  course.concourse_department == dept_to_finalise
-	#puts Diffy::Diff.new(course.concourse_department , dept_to_finalise)
-	#if course.concourse_department.strip == dept_to_finalise
-		#puts course.concourse_ID + " matches dept"
+	if course.concourse_ID.include? "Draft" 
+		course.get_Concourse_summary(x)
+		puts course.concourse_ID 
 		course.check_audit_status
 		if course.to_finalise >0
 			puts "Finalise #{course.concourse_ID}"
@@ -53,6 +51,6 @@ CSV.foreach(concourse_syllabus_report, :headers => true) do |x|
 			course.write_course_feed($course_feed_file, "Final")
 			course.write_section_feed($section_feed_file, "Final")
 		end
-	#end
+	end
 end
 

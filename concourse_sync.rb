@@ -22,9 +22,9 @@ end
 open_output_files("SyncOutput")
 
 #next open input file
-concourse_syllabus_report = "Concourse_Syllabus_report-all.csv"
+concourse_syllabus_report = "Input/Concourse_Syllabus_report-all.csv"
 puts "I will check sync status for all the courses in the Concourse Syllabus report "\
-	 "#{concourse_syllabus_report}"
+	 "#{concourse_syllabus_report} with _Draft course ID."
 
 $sync_instructor = 0
 $add_noPC_to_titile = 0
@@ -60,13 +60,13 @@ CSV.foreach(concourse_syllabus_report, :headers => true) do |x|
 				course.write_LO_feed($learningOutcomes_feed_file)
 			end
 		else
-			#puts "unsunc"
-			#$unsunc_file.write("#{course.concourse_ID}, Not in Draft (or Unused_draft) campus in Concourse,"\
-			#	"Sync process will skip this course\n")
+			puts "unsunc"
+			$unsunc_file.write("#{course.concourse_ID}, Not in Draft (or Unused_draft) campus in Concourse,"\
+				"Sync process will skip this course\n")
 		end
-	else
-		$unsunc_file.write("#{course.concourse_ID}, Not a Draft outline,"\
-			"Sync process will skip this course\n")
+	#else
+	#	$unsunc_file.write("#{course.concourse_ID}, Not a Draft outline,"\
+	#		"Sync process will skip this course\n")
 	end
 end
 

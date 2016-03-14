@@ -31,7 +31,7 @@ class ANU_Course
 		@concourse_college = "ANU "+info["School"]
 		#puts "college: " + @concourse_college
 		@concourse_department = $concourse_department_name[info["Department"]]
-		#puts "dept: " + @concourse_department
+		#puts "in syllabus report dept = #{info["Department"]} so concourse_dept = #{@concourse_department}"
 		@concourse_credits = info["Credits"].to_s
 		#puts "credits: " + @concourse_credits
 		@concourse_delivery = info["Delivery Method"].to_s
@@ -49,7 +49,7 @@ class ANU_Course
 		end
 		if @concourse_is_template=="Yes" and !@concourse_from_template
 			puts "Error: #{@concourse_ID } says its a template but isn't linked to one above"
-		elsif @concourse_is_template != "Yes" and @concourse_from_template != nil
+		elsif @concourse_is_template != "Yes" and !@concourse_from_template.to_s.empty? 
 			puts "Error: #{@concourse_ID } says its not a template but it is lined to #{@concourse_from_template}"			
 		end
 
@@ -66,21 +66,16 @@ class ANU_Course
 			newIDsuffix = $short_name[@concourse_session]+"_"+@concourse_year
 			@final_ID = @concourse_ID.gsub("Draft", newIDsuffix)
 			if $courselist.include? (@final_ID)
-				#puts @final_ID + " is already created"
 				return
 			else		
 				audit_year = 2000+ @audit_date[-2..-1].to_i
-				#puts "audit year " + audit_year.to_s + " this year " + $time.year.to_s
 				audit_month = @audit_date[-5..-4].to_i
-				#puts "audit month " + audit_month.to_s + " this month " + $time.month.to_s
 				if audit_year == $time.year and audit_month >= ($time.month)-3
 					@to_finalise = 1
 					#puts "finalise #{@concourse_ID} to #{@final_ID}"
 				elsif $time.month <3 and audit_year.to_s == $time.year-1 and audit.month >10
 					@to_finalise = 1
 					#puts "finalise #{@concourse_ID} to #{@final_ID}"
-				else
-					#puts "#{@concourse_ID} has not final version and hasn't been recently audited"
 				end
 			end
 		end 
@@ -96,27 +91,19 @@ class ANU_Course
 
 
 	def retire
-		if @concourse_title.include?(" Not in P&C")
-			@title = @concourse_title
-		else
-			puts "#{@concourse_ID}: Not on P&C for #{$sync_year}"
-			if $add_noPC_to_titile == 1
-				" - adding this to title"
-				@title = @concourse_title + " - Not in P&C"
-				@out_of_sync += 1
-			end
-		end
+		@title = @concourse_title
 		@by_dept = @concourse_department
 		@in_year = ""
 		@in_session = ""
 		@unit_value = @concourse_credits
-		if @concourse_campus == "DRAFT"
+		if @concourse_campus == "DRAFT" || !@concourse_year.to_s.empty?  || !@concourse_session.to_s.empty? 
 			@concourse_campus = "Unused_DRAFT"			
 			puts "#{@concourse_ID}, Not on P&C for #{$sync_year}, moving to Unused DRAFT campus"
 			@out_of_sync += 1
 		end
 		$unsunc_file.write("#{@concourse_ID}, Not on P&C for #{$sync_year}, "\
-			"Check with School if you can delete it from Concourse\n")
+			"\t  Check with School if you can delete it from Concourse.\n"\
+			"\t But note many 9xxx series courses are deliberately not publisehd in P&C. \n")
 	end
 
 	def open_PandC
@@ -124,7 +111,6 @@ class ANU_Course
 		url = "http://programsandcourses.anu.edu.au/"+$sync_year+"/course/"+@code
 		encoded_url = URI.encode(url)
 		@doc_PandC=Nokogiri::HTML(open(encoded_url))
-		#puts "I'm in"
 		$temp_file.write(@doc_PandC)
 		#puts @doc_PandC
 
@@ -164,21 +150,15 @@ class ANU_Course
 		#puts summary_lines
  
 		dept = summary_lines[1]
-		#puts "department " + dept
 		@by_dept = $concourse_department_name[dept.strip]
-		#puts @by_dept
-		if @by_dept == nil
-			#if can't determine Department from P&C, warn but don't change in Concourse
+		if @by_dept.to_s.empty? 
 			@by_dept = "Unclear"
-			puts "Can't determine 'Offered By' department from P&C"
 		end
 
 		college = summary_lines[3]
-		#puts "college " + college
 		if college.scan(/College/).length > 1
 			# if offered by more than one College, warn 
 			puts "#{@concourse_ID}, Offered by more than one College, might need two draft outlines"
-			#puts college
 		end
 		@college = college.strip
 
@@ -225,18 +205,18 @@ class ANU_Course
 			str1_marker = summary_headings[convener_on_PandC]
 			str2_marker = summary_headings[convener_on_PandC+1]
 			text = summary_content.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1].strip
-			@instructor = prepare_text_for_feed(text)
+			@convener = prepare_text_for_feed(text)
 		end
  	end
 
  	def create_feed_info
-		if @in_year == nil
+		if @in_year.to_s.empty? 
 			@concourse_campus = "Unused_DRAFT"		
 		else
 			@concourse_campus = "DRAFT"		
 		end
 		@concourse_delivery = @in_mode 
-		@concourse_instructor = @instructor
+		@concourse_instructor = @convener
 		@concourse_from_template = @by_dept+"_Template"
 		if @by_dept == "Crawford"
 			puts "check the correct template is in use for Crawford course #{@concourse_ID}"
@@ -251,21 +231,25 @@ class ANU_Course
 		end
 
 		# check Offered in year
-		if @in_year == nil and @concourse_campus == "DRAFT"
+		if @in_year.to_s.empty? 
+			if @concourse_campus == "DRAFT"
 				puts "#{@concourse_ID}: Not offered in #{$sync_year}, moving to Unused_DRAFT campus"
-			@concourse_campus = "Unused_DRAFT"
-			@out_of_sync += 1
+				@concourse_campus = "Unused_DRAFT"
+				@out_of_sync += 1
+			end
 		elsif @in_year != @concourse_year
 			# update year in Concourse so it matches P&C
 			puts "#{@concourse_ID}: Update Year from #{@concourse_year} to #{@in_year}"
 			@out_of_sync += 1
 		end
 
-		# check Offered in s"ession
-		if @in_session != @concourse_session
+		# check Offered in session
+		if !@in_session.to_s.empty?  
+			if @in_session != @concourse_session
 				puts "#{@concourse_ID}: Update Session from #{@concourse_session}"\
 					" to #{@in_session}"
 				@out_of_sync += 1
+			end
 		end
 
 		#check College
@@ -277,11 +261,11 @@ class ANU_Course
 		end
 
 		# check Offered by department and check from_template
-		if @by_dept == nil
+		if @by_dept.to_s.empty?  || @by_dept == "Unclear"
 			$unsunc_file.write(@concourse_ID + ", 'Offered By' in P&C not recognised,"\
 				" No change has been made to the Department in Concourse\n")
 			@by_dept = @concourse_department
-		elsif @by_dept != @concourse_department
+		elsif @by_dept != @concourse_department  
 			puts "#{@concourse_ID}: Update the offering Department from #{@concourse_department} to #{@by_dept}"
 			@out_of_sync += 1
 			if @concourse_from_template != $school_template[@by_dept]
@@ -302,7 +286,7 @@ class ANU_Course
  		end
 
 		# check mode of delivery
-		if @concourse_delivery == nil 
+		if @concourse_delivery.to_s.empty?  
 			#if Concourse doesn't list Delivery Mode add from P&C
 			@concourse_delivery = @in_mode
 		elsif @in_mode != @concourse_delivery 
@@ -312,20 +296,18 @@ class ANU_Course
 		end	
 
  		# check convener / instructor
-		convener_on_PandC = summary_headings.index("Course convener")
-		if @instructor != ""
-			if @concourse_instructor == "" #if Concourse doesn't list Instructor add from P&C
-				@concourse_instructor = @instructor
-				#puts "#{@concourse_ID}: add instructor #{@instructor}"
+		if !@convener.to_s.empty? 
+			if @concourse_instructor.to_s.empty?  #if Concourse doesn't list Instructor add from P&C
+				@concourse_instructor = @convener
+				puts "#{@concourse_ID}: add instructor #{@convener}"
 				@out_of_sync += 1
-			elsif @instructor != @concourse_instructor 	#if Concourse does list Instructor, and it differs from P&C 
-	 			#puts "no"
+			elsif @convener != @concourse_instructor 	#if Concourse does list Instructor, and it differs from P&C 
 	 			if $sync_instructor == 1
 	 				@out_of_sync += 1
-	 				#puts "#{@concourse_ID}: change instructor from #{@concourse_instructor} to #{@instructor}"
-					@concourse_instructor = @instructor		 			
+	 				puts "#{@concourse_ID}: change instructor from #{@concourse_instructor} to #{@convener}"
+					@concourse_instructor = @convener		 			
 	 			else #if Concourse does list Instructor, don't change it but warn if P&C doesn't match
-	 				$unsunc_file.write("#{@concourse_ID}, P&C convener (#{@instructor}) does not match"\
+	 				$unsunc_file.write("#{@concourse_ID}, P&C convener (#{@convener}) does not match"\
 	 					" Concourse instructor (#{@concourse_instructor}), No change has been made\n")
 				end				 
 			end
@@ -381,11 +363,11 @@ class ANU_Course
 	end
 
 	def prepare_text_for_feed(text0)
-		if text0 == nil
-			""
+		all_words = ""
+		if text0.to_s.empty? 
+			all_words
 		else
 			#puts text0
-			all_words = ''
 			if text0.include? "SUB-PLANS"
 				str1_marker = ""
 				str2_marker = " <!-- START SUB-PLANS -->"
@@ -393,12 +375,9 @@ class ANU_Course
 			else
 				text = text0
 			end
-			#puts "became" + text.to_s
-			if text == nil
-				#puts "which is nil"
-				""
+			if text.to_s.empty? 
+				all_words
 			else
-				#puts "which I can do things with"
 				text.gsub!('frameborder="0"',"") #maybe remove this
 				text.gsub!(' allowfullscreen=""&gt;',"") # and this - they were put to fix one Crawford course video display 
 				text.gsub!(/<div.*?>/, '')
@@ -418,8 +397,7 @@ class ANU_Course
 				end	
 				#$temp_file.write(  "like make this")
 				#$temp_file.write( all_words)
-				#puts all_words
-				all_words
+				all_words.strip
 			end
 		end
 	end
@@ -457,14 +435,14 @@ class ANU_Course
 		str2_marker = "<h2"
 		text0= search_html.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
 		if text0
-			str1_marker = ""
-			str2_marker = " <!-- START SUB-PLANS -->"
-			text = text0.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
-			if text
+			#str1_marker = ""
+			#str2_marker = " <!-- START SUB-PLANS -->"
+			#text = text0.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
+			#if text
 				@other = prepare_text_for_feed(text0)
-			else 
-				@other = ""
-			end		
+		#	else 
+		#		@other = ""
+		#	end		
 		else
 			@other = ""
 		end
@@ -474,13 +452,13 @@ class ANU_Course
 		text0= search_html.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
 		#puts text0
 		if text0
-			str1_marker = ""
-			str2_marker = " <!-- START SUB-PLANS -->"
-			text = text0.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
-			if text
+			#str1_marker = ""
+			#str2_marker = " <!-- START SUB-PLANS -->"
+			#text = text0.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1]
+			#if text
 				@other << "<strong> Assumed Knowledge </strong> <br>"
-				@other << prepare_text_for_feed(text)
-			end	
+				@other << prepare_text_for_feed(text0)
+			#end	
 		end
 
 
