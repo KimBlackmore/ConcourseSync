@@ -102,8 +102,8 @@ class ANU_Course
 			@out_of_sync += 1
 		end
 		$unsunc_file.write("#{@concourse_ID}, Not on P&C for #{$sync_year}, "\
-			"\t  Check with School if you can delete it from Concourse.\n"\
-			"\t But note many 9xxx series courses are deliberately not publisehd in P&C. \n")
+			"Check with School if you can delete it from Concourse."\
+			"But note many 9xxx series courses are deliberately not published in P&C. \n")
 	end
 
 	def open_PandC
@@ -158,7 +158,7 @@ class ANU_Course
 		college = summary_lines[3]
 		if college.scan(/College/).length > 1
 			# if offered by more than one College, warn 
-			puts "#{@concourse_ID}, Offered by more than one College, might need two draft outlines"
+			$unsunc_file.write("#{@concourse_ID}, Offered by more than one College, might need two draft outlines")
 		end
 		@college = college.strip
 

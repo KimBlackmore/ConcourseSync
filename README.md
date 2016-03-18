@@ -45,3 +45,5 @@ They take input files which are csv files saved in the Input directory under the
   * course_feed.csv
   * Section_feed.csv
   * unsunc.csv (a list of exceptions that need to be handled manually)
+
+This software is designed to be used by ANU's concourse system administrators. Sysadmin instructions can be [found in Wattle](https://wattlecourses.anu.edu.au/mod/book/view.php?id=857599&chapterid=169953)

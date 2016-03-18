@@ -42,9 +42,7 @@ CSV.foreach(pandC_courselist, :headers => true) do |x|
 	else
 		course = ANU_Course.new(course_ID)
 		$courselist.add(course_ID)
-		course.open_PandC #check this will still work with empty course
-		# might need another funciton to prepare the making of a draft feed
-		# or making and unused draft feed if the course is not scheduled
+		course.open_PandC  
 		if course.title != "Page not found"
 			puts "Add #{course_ID} to feeds"
 			course.get_PandC_info
