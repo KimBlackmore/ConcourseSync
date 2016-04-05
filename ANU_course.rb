@@ -33,7 +33,7 @@ class ANU_Course
 		@concourse_department = $concourse_department_name[info["Department"]]
 		#puts "in syllabus report dept = #{info["Department"]} so concourse_dept = #{@concourse_department}"
 		@concourse_credits = info["Credits"].to_s
-		#puts "credits: " + @concourse_credits
+		#puts @concourse_ID + " credits: " + @concourse_credits
 		@concourse_delivery = info["Delivery Method"].to_s
 		#puts "delivery: #{@concourse_delivery or ' '}"
 		@concourse_instructor = info["Instructor"].to_s
@@ -98,7 +98,8 @@ class ANU_Course
 		@unit_value = @concourse_credits
 		if @concourse_campus == "DRAFT" || !@concourse_year.to_s.empty?  || !@concourse_session.to_s.empty? 
 			@concourse_campus = "Unused_DRAFT"			
-			puts "#{@concourse_ID}, Not on P&C for #{$sync_year}, moving to Unused DRAFT campus"
+			puts "#{@concourse_ID}, Not on P&C for #{$sync_year}, moving to Unused DRAFT campus",
+				" - if you want to use it, change this setting in the course feed before running."
 			@out_of_sync += 1
 		end
 		$unsunc_file.write("#{@concourse_ID}, Not on P&C for #{$sync_year}, "\
@@ -133,15 +134,18 @@ class ANU_Course
 		summary_headings = Array.new
 		search_summary_headings = @doc_PandC.css('span.degree-summary__code-heading')
 		summary_length = search_summary_headings.length
+		#puts "there are #{summary_length} headings for #{@concourse_ID} "
 		for i in 0..(summary_length-1)
 			heading = ActionView::Base.full_sanitizer.sanitize(search_summary_headings[i].to_s)
 			summary_headings[i]= heading
 		end
+		#puts " and the last one is #{summary_headings[summary_length-1]}"
 		
 		search_summary = @doc_PandC.css('div.degree-summary__codes').inner_html.to_s
 		summary_content = ActionView::Base.full_sanitizer.sanitize(search_summary)
 		
 		summary_lines = summary_content.lines
+		#uts "lines are #{summary_lines}"
 		summary_lines.each do |x|
 			if !has_letters(x)
 				summary_lines -= [x]
@@ -163,24 +167,26 @@ class ANU_Course
 		@college = college.strip
 
 		# get Offered in year and session
-		@offered_in_sync_year = summary_headings.index("Offered in")
+		@offered_in_sync_year = summary_headings.index("Offered in")		
 		if @offered_in_sync_year
-			str1_marker = summary_headings[@offered_in_sync_year]
-			str2_marker = summary_headings[@offered_in_sync_year+1]
-			offering_info = summary_content.to_s[/#{str1_marker}(.*?)#{str2_marker}/m, 1].split
-			@in_year = offering_info[-1]
-			#puts @in_year
-			if @in_year != $sync_year
-				#if the year written in P&C doens't match the year in the url, complain
+			times = 0
+			summary_lines.each do |thisline|
+				if times < 2
+					if  thisline.include? $sync_year.to_s
+						@in_session = $session_name[thisline.strip.split(/\W+/)[0]]
+						@in_year = $sync_year
+						times += 1
+					end
+				end
+			end 
+			#puts times
+			#puts @in_session
+			if times == 0
 				puts "#{@concourse_ID}: Something wrong with the scheduling year in PandC"
-			end
-			if offering_info.count($sync_year)>1
-				# if offered more than once in the year, warn but don't update session
+			elsif times >1
 				$unsunc_file.write("#{@concourse_ID}, Offered more than once in #{$sync_year},"\
 					" Update the Session in the Concourse Draft manually\n")
 				@in_session = @concourse_session			
-			elsif offering_info.count($sync_year)==1
-				@in_session  = $session_name[offering_info[0]]
 			end
 		end
 
@@ -385,18 +391,14 @@ class ANU_Course
 				text.gsub!("<p><iframe", "<div><iframe") #is the div in the replacement necessary?
 				text.gsub!("</iframe></p>", "</iframe></div>") #or here?
 				text_lines = text.strip.lines
-				text_lines.each do |words|
-					if !has_letters(words)
-						text_lines -= [words]
+				text_lines.each do |thisline|
+					if !has_letters(thisline)
+						text_lines -= [thisline]
 					else
-						#words.gsub!(/\n/, ' ')
-						#words.gsub!(/\t/, ' ')
 						all_words << " "
-						all_words << words.strip 
+						all_words << thisline.strip 
 					end
 				end	
-				#$temp_file.write(  "like make this")
-				#$temp_file.write( all_words)
 				all_words.strip
 			end
 		end

@@ -21,15 +21,15 @@ end
 
 #next open input file
 concourse_syllabus_report = "Input/Concourse_Syllabus_report_to_final.csv"
-puts "I will make final copies for all the draft courses in "\
+puts "\n Make final copies for all the draft courses in "\
 	 "#{concourse_syllabus_report} that have been reviewed in the last 3 months "\
-	 "AND don't already have a final copy that I can find in the Syllabus Report."
-puts "If you don't want that, hit CTRL-C (^C)."
-puts "Else, hit RETURN."
-$stdin.gets
+	 "AND don't already have a final copy that I can find in the Syllabus Report.\n\n"
+#puts "If you don't want that, hit CTRL-C (^C)."
+#puts "Else, hit RETURN."
+#$stdin.gets
 
-puts "OK here goes..."
-open_output_files("FinaliseOutput")
+#puts "OK here goes..."
+open_output_files("Output/FinaliseOutput")
 
 $sync_instructor = 1
 

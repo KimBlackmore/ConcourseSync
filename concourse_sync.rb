@@ -19,12 +19,12 @@ else
 	$sync_year = (time.year+1).to_s
 end
 
-open_output_files("SyncOutput")
-
 #next open input file
 concourse_syllabus_report = "Input/Concourse_Syllabus_report-all.csv"
-puts "I will check sync status for all the courses in the Concourse Syllabus report "\
-	 "#{concourse_syllabus_report} with _Draft course ID."
+puts "\n Check sync status for all the courses in the Concourse Syllabus report "\
+	 "#{concourse_syllabus_report} with _Draft course ID.\n\n"
+
+open_output_files("Output/SyncOutput")
 
 $sync_instructor = 0
 $add_noPC_to_titile = 0

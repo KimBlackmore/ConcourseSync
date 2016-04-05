@@ -3,12 +3,12 @@ require 'fileutils'
 def open_output_files(output_folder)
 	FileUtils::mkdir_p output_folder
  
-	puts "I'm going to overwrite files in  #{output_folder}"
-	puts "If you don't want that, hit CTRL-C (^C)."
-	puts "Else, hit RETURN."
-	$stdin.gets
+	puts "Output files will be written to  #{output_folder}\n\n"
+	#puts "If you don't want that, hit CTRL-C (^C)."
+	#puts "Else, hit RETURN."
+	#$stdin.gets
 
-	puts "OK here goes..."
+	#puts "OK here goes..."
 
 	course_feed_filename = output_folder+"/course_feed.csv"
 	$course_feed_file = open(course_feed_filename,'w')

@@ -17,14 +17,15 @@ else
 	$sync_year = (time.year+1).to_s
 end
 
-puts "Will read the list of coursecodes in P&C_courselist.csv - should be a file with one coursecode on each line - headers to match search in P&C"
-puts
+puts "\n Read the list of coursecodes in P&C_courselist.csv - ",
+	"should be a file with one coursecode on each line - headers to match search in P&C.\n"
+
 pandC_courselist = "Input/P&C_courselist.csv" #this should be a file with a course code on each line
 
 concourse_syllabus_report = "Input/Concourse_Syllabus_report-all.csv"
-puts "For each coursecode will check if there is already a draft courseoutline with ID ",
-	"coursecode_Draft in #{concourse_syllabus_report}. If not will create entries in course feed and syllabus feed files"
-puts
+puts "\n For each coursecode will check if there is already a draft courseoutline with ",
+	"ID coursecode_Draft in #{concourse_syllabus_report}. If not will create entries ",
+	"in course feed and syllabus feed files.\n\n"
 
 open_output_files("Add_draft_output")
 
